@@ -96,6 +96,7 @@ module Hledger.Data.Journal (
   journalPostingsAddAccountTags,
   -- journalPrices,
   journalConversionAccount,
+  journalConversionAccounts,
   -- * Misc
   canonicalStyleFrom,
   nulljournal,
@@ -519,12 +520,19 @@ letterPairs :: String -> [String]
 letterPairs (a:b:rest) = [a,b] : letterPairs (b:rest)
 letterPairs _ = []
 
--- | The 'AccountName' to use for automatically generated conversion postings.
+-- The fallback account to use for automatically generated conversion postings
+-- if no account is declared with the Conversion type.
+defaultConversionAccount = "equity:conversion"
+
+-- | The account to use for automatically generated conversion postings in this journal:
+-- the first of the journalConversionAccounts.
 journalConversionAccount :: Journal -> AccountName
-journalConversionAccount =
-    headDef (T.pack "equity:conversion")
-    . M.findWithDefault [] Conversion
-    . jdeclaredaccounttypes
+journalConversionAccount = headDef defaultConversionAccount . journalConversionAccounts
+
+-- | All the accounts declared as Conversion type in this journal,
+-- or the default conversion account if none are declared.
+journalConversionAccounts :: Journal -> [AccountName]
+journalConversionAccounts j = M.findWithDefault [defaultConversionAccount] Conversion $ jdeclaredaccounttypes j
 
 -- Newer account type code.
 
@@ -943,9 +951,11 @@ journalInferEquityFromCosts verbosetags j = journalMapTransactions (transactionA
 -- See hledger manual > Cost reporting.
 journalInferCostsFromEquity :: Journal -> Either String Journal
 journalInferCostsFromEquity j = do
-    ts <- mapM (transactionInferCostsFromEquity False $ jaccounttypes j) $ jtxns j
-    return j{jtxns=ts}
+  ts <- mapM (transactionInferCostsFromEquity False conversionaccts) $ jtxns j
+  return j{jtxns=ts}
+  where conversionaccts = journalConversionAccounts j
 
+-- XXX duplication of the above
 -- | Do just the internal tagging that is normally done by journalInferCostsFromEquity,
 -- identifying equity conversion postings and, in particular, postings which have redundant costs.
 -- Tagging the latter is useful as it allows them to be ignored during transaction balancedness checking.
@@ -953,8 +963,9 @@ journalInferCostsFromEquity j = do
 -- when it will have more information (amounts) to work with.
 journalMarkRedundantCosts :: Journal -> Either String Journal
 journalMarkRedundantCosts j = do
-    ts <- mapM (transactionInferCostsFromEquity True $ jaccounttypes j) $ jtxns j
-    return j{jtxns=ts}
+  ts <- mapM (transactionInferCostsFromEquity True conversionaccts) $ jtxns j
+  return j{jtxns=ts}
+  where conversionaccts = journalConversionAccounts j
 
 -- -- | Get this journal's unique, display-preference-canonicalised commodities, by symbol.
 -- journalCanonicalCommodities :: Journal -> M.Map String CommoditySymbol
