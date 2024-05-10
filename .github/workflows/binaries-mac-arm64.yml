@@ -132,6 +132,7 @@ jobs:
 
     - name: Install shelltestrunner
       run: |
+        rm -f ~/.local/bin/shelltest   # temporary to force reinstall/ensure correct arch
         export PATH=~/.local/bin:$PATH
         if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install shelltestrunner-1.10; fi
         shelltest --version
