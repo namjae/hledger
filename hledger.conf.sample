@@ -1,4 +1,4 @@
-# An example hledger config file, for you to customise.
+# An example hledger config file, for you to customise.      -*- conf -*-
 # This declares extra options/arguments to be added to your hledger commands.
 # Save as ~/.hledger.conf, or ~/.config/hledger/hledger.conf, or hledger.conf
 # in or above your current directory, and hledger will use it automatically.
